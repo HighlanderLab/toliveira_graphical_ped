@@ -1,0 +1,20 @@
+Package: animalModels
+Type: Package
+Title: Animal Models Using BUGS Language
+Version: 0.0.1
+Authors@R: c(person("Thiago", "de Paula Oliveira", role=c("aut", "cre"), email = "thiago.oliveira@ed.ac.uk"), person("Ivan","Pocrnic", role="aut", email = "ivan.pocrnic@roslin.ed.ac.uk"), person("Gregor", "Gorjanc",  role="aut", email = "gregor.gorjanc@gmail.com"))
+Author: Thiago de Paula Oliveira [aut, cre], Ivan Pocrnic [aut], Gregor Gorjanc [aut]
+Maintainer: Thiago de Paula Oliveira <thiago.oliveira@ed.ac.uk>
+Description: Prepair data for pedigree based mixed effects model (animal model) in BUGS; write BUGS model onto JAGS format; and include general animal models write in BUGS language.
+Date: 2021-01-27
+Depends: R (>= 3.2.3)
+Imports: pedigreemm, MCMCglmm, MasterBayes, gdata, utils, stats, Matrix
+Suggests:
+    roxygen2 (>= 3.0.0),
+    MASS
+License: GPL (>= 2)
+Encoding: UTF-8
+Repository: CRAN
+NeedsCompilation: yes
+LazyData: true
+RoxygenNote: 7.1.1
