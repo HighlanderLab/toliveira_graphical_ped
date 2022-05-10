@@ -1,7 +1,7 @@
 ---
 title: "Animal Models"
 author: "Thiago de Paula Oliveira, Ivan Pocrnic, Gregor Gorjanc"
-date: "05/11/2020"
+date: "10/05/2022"
 header-includes:
   - \usepackage{amsmath}
 tags:
@@ -64,9 +64,13 @@ if (!require("pacman")) {
   install.packages("pacman")
 }
 pacman::p_load(
+  tidyverse,
   knitr,
   runjags,
   MCMCvis,
+  MCMCglmm,
+  gdata,
+  MasterBayes,
   coda,
   ggrepel,
   dplyr,
