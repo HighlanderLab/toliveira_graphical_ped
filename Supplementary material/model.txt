@@ -1,0 +1,21 @@
+model
+{
+    tau2e ~ dgamma(0.001, 0.001)
+    tau2a ~ dgamma(0.001, 0.001)
+    sigma2e <- pow(tau2e, -1)
+    sigma2a <- pow(tau2a, -1)
+    sigmaa <- pow(tau2a, -2)
+    for (k in 1:nI) {
+        u[k] ~ dnorm(0.00000E+00, 1)
+        a[id[k]] <- u[k] * wsqr[id[k]] * sigmaa + 0.5 * (a[fid[k]] + 
+            a[mid[k]])
+    }
+    a[nU] <- 0.00000E+00
+    for (j in 1:nB) {
+        b[j] ~ dnorm(0.00000E+00, 1.00000E-06)
+    }
+    for (i in 1:nY) {
+        y[i] ~ dnorm(mu[i], tau2e)
+        mu[i] <- inprod(x[i, ], b[]) + a[idy[i]]
+    }
+}

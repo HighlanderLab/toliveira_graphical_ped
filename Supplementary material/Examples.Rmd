@@ -48,6 +48,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, error=FALSE, warning = FALSE
                       class.source = "lineAnchors")
 ```
 
+
 <div class="text">
 All our algorithms and analysis was built using a stable version 4.3.0 of JAGS, stable version 0.10.1 of NIMBLE, and `R` version 3.6.3. We are also using the packages `rjags` [@denwoodRunjagsPackageProviding2016a] and `nimble` [@devalpineNIMBLEMCMCParticle2020], to build models, `coda` [@CODA] and `MCMCvis` [@youngfleshMCMCvisToolsVisualize2018] to extract summary information from MCMC output; `AlphaSimR` [@gaynorAlphaSimRRpackageBreeding2020] to make animal breeding programme simulation; `MatrixModels`[@batesMatrixModelsModellingSparse2015]; and `pedigreemm`[@batesPedigreemmPedigreebasedMixedeffects2014]; `ggplot2` [@wickhamGgplot2ElegantGraphics2016], `patchwork` [@pedersenPatchworkComposerPlots2020], and `ggrepel` [@slowikowskiGgrepelAutomaticallyPosition2020] to prepare graphical outputs; `dplyr` [@wickhamDplyrGrammarData2020], `knitr` [@xieKnitrGeneralPurposePackage2020], `kableExtra`[@zhuKableExtraConstructComplex2020], and `formattable` [@renFormattableCreateFormattable2016] for general purposes. 
 </div>
@@ -56,13 +57,18 @@ All our algorithms and analysis was built using a stable version 4.3.0 of JAGS, 
 sessionInfo()
 ```
 
-```{r, include=FALSE, message=FALSE, error=FALSE, warning=FALSE}
+```{r, include = FALSE, message=FALSE, error=FALSE, warning=FALSE}
 #=======================================================================
 # Packages
 #=======================================================================
 if (!require("pacman")) {
   install.packages("pacman")
 }
+if (!require("MasterBayes")) {
+  install.packages("remotes")
+  remotes::install_version("MasterBayes", version = "2.58", repos = "http://cran.us.r-project.org")
+}
+
 pacman::p_load(
   tidyverse,
   knitr,
@@ -100,7 +106,11 @@ sapply(file.sources, source, .GlobalEnv)
 
 # Brief description of animal model
 <div class="text">
-Animal models have been used to gain some knowledge about genetic and environmental parameters, and generally, the phenotype values are a function of fixed and random effects. This approach is so-called mixed-effects models and has been used for many decades in different research fields. However, the random effects and their associated variance components have a special meaning when working in the genetics field, and avoiding complexity will gently explain those ideas and interpretation. Suppose a straightforward experiment where we measured response variable $y_{i}$, called phenotype, on the $i$th individual. Some of them have one or both parents (un)known, and some animals belong to a group factor with two levels (1 or 2), as we show in the following database:
+Animal models have been widely used to investigate the impact of genetic and environmental factors on various phenotypic traits. To analyze the data obtained from such experiments, mixed-effects models are commonly employed. These models account for both fixed and random effects, with the phenotype values being a function of both.
+
+While mixed-effects models have been used for several decades in various research fields, they have a specific significance when applied in genetics research. Random effects and their associated variance components play a crucial role in understanding the genetic factors contributing to a phenotype. However, these concepts can be complex and challenging to interpret. Therefore, it is essential to present them in a simple and easy-to-understand manner.
+
+To illustrate this, let us consider a hypothetical experiment where we measure the response variable (phenotype) $y_i$ on the $i$th individual. Some individuals have one or both parents unknown, while others belong to a group factor with two levels (1 or 2), as shown in the following database:
 </div>
 
 <a id="example1"></a>
@@ -130,26 +140,33 @@ example %>%
   kable_paper("hover", full_width = F)
 ```
 <div class="text">
-The simplest way to capture the expected relationship between $y_i$ and some covariates is through the model:
+To capture the relationship between $y_i$ and covariates, the most straightforward approach is to use a model:
 </div>
 
 <a id="model"></a>
 \begin{align}
 \begin{array}{c}
          y_{ij} = b_{j} + a_{i} + e_{ij}, \\
-         b_{j} = m + Gr_{j}, \quad a_{i} \sim \mbox{N}\left(0, \sigma_{a}^{2}\right), \quad e_{ij} \sim \mbox{N}\left(0,\sigma^2_{e}\right)
+         b_{j} = m + Gr_{j}, \quad a_{i} \sim \mbox{N}\left(0, \sigma_{a}^{2}\right), \quad e_{ij} \sim \mbox{N}\left(0,\sigma^2_{e}\right).
 \end{array}
 \label{eq:basic_model}
 \end{align}
 <div class="text">
-where $y_{ij}$ is the phenotypic value of individual $i$ from group $j$, $b_{j}$ is the mean for the group $j$, $a_{i}$ is an additive genetic value of individual $i$ (frequently
-called breeding value), $m$ is the overall mean, $Gr_j$ is the effect of $j$th group, and $e_{ij}$ is the (experimental) error term. This model can be easily extended to account for a more complex experiment, and it can be generalized through matrix notation as:
+The model for analyzing the relationship between the phenotype values $y_{ij}$ of individual $i$ from group $j$, can be represented as follows: $b_{j}$ is the mean value for group $j$, $a_{i}$ is the additive genetic value of individual $i$ (commonly referred to as breeding value), $m$ is the overall mean, $Gr_j$ is the effect of the $j$th group, and $e_{ij}$ represents the experimental error term.
+
+This model can be further expanded to account for more complex experiments. Using matrix notation, it can be generalized as:
 </div>
 \begin{eqnarray}
 \mathbf{y} & = & \mathbf{X}\mathbf{b}+\mathbf{Z}\mathbf{a}+\mathbf{e},\label{eq:animal_model}
 \end{eqnarray}
 <div class="text">
-where design matrices ($\mathbf{X}$ and $\mathbf{Z}$) link the unknown parameters $\mathbf{b}$ and predicted values at population-level $\mathbf{a}$ with phenotypic values $(\mathbf{y})$. Standard assumptions for phenotypes following normal (Gaussian) distribution are $\mathbf{e}|\sigma_{e}^{2} \sim \mbox{N}\left(\mathbf{0},\sigma_{e}^{2}\mathbf{I}\right)$, $\mathbf{y}|\mathbf{a} \sim \mbox{N}\left(\mathbf{X}\mathbf{b}+\mathbf{Z}\mathbf{a}, \sigma_{e}^{2}\mathbf{\mathbf{I}}\right)$, and marginally $\mathbf{y} \sim \mbox{N}\left(\mathbf{X}\mathbf{b}, \mathbf{Z}\mathbf{G}\mathbf{Z}^{T}+\sigma_{e}^{2}\mathbf{\mathbf{I}}\right)$, where $\mathbf{G}$ represents a general variance-covariance matrix for $\mathbf{a}$. For now, let us assume $\mathbf{G} = \sigma_{a}^{2}\mathbf{A}$, where $\mathbf{A}$ is a numerator relationship matrix (NRM) used to account for the additive genetic covariance between records of related animals, and $\sigma_{a}^{2}$ is the additive genetic variance. Consequently, $\mathbf{a}|\mathbf{A},\sigma_{a}^{2} \sim  \mbox{N}\left(\mathbf{0},\mathbf{A}\sigma_{a}^{2}\right)$. In addition, matrix $\mathbf{A}$ can be decomposed as $\mathbf{T}\mathbf{W}\mathbf{T}^{T}$, where $\mathbf{T}$ is a dense unit lower triangular matrix describing the flow (trace) of genes in the pedigree; $\mathbf{W}$ is a diagonal matrix with values depending on the knowledge of parents and parent inbreeding coefficients.
+In the above model, the design matrices $\mathbf{X}$ and $\mathbf{Z}$ establish the link between the unknown parameters $\mathbf{b}$ and predicted values at the population level $\mathbf{a}$ with the phenotypic values $\mathbf{y}$.
+
+Under the standard assumption of phenotypes following a normal (Gaussian) distribution, $\mathbf{e}|\sigma_{e}^{2} \sim \mbox{N}\left(\mathbf{0},\sigma_{e}^{2}\mathbf{I}\right)$, $\mathbf{y}|\mathbf{a} \sim \mbox{N}\left(\mathbf{X}\mathbf{b}+\mathbf{Z}\mathbf{a}, \sigma_{e}^{2}\mathbf{\mathbf{I}}\right)$, and $\mathbf{y} \sim \mbox{N}\left(\mathbf{X}\mathbf{b}, \mathbf{Z}\mathbf{G}\mathbf{Z}^{T}+\sigma_{e}^{2}\mathbf{\mathbf{I}}\right)$, where $\mathbf{G}$ is the general variance-covariance matrix for $\mathbf{a}$.
+
+Assuming $\mathbf{G} = \sigma_{a}^{2}\mathbf{A}$, where $\mathbf{A}$ is a numerator relationship matrix (NRM) used to account for the additive genetic covariance between records of related animals and $\sigma_{a}^{2}$ is the additive genetic variance, we get $\mathbf{a}|\mathbf{A},\sigma_{a}^{2} \sim \mbox{N}\left(\mathbf{0},\mathbf{A}\sigma_{a}^{2}\right)$.
+
+Additionally, we can decompose the matrix $\mathbf{A}$ as $\mathbf{T}\mathbf{W}\mathbf{T}^{T}$, where $\mathbf{T}$ is a dense unit lower triangular matrix that describes the flow (trace) of genes in the pedigree, and $\mathbf{W}$ is a diagonal matrix with values that depend on the knowledge of parents and parent inbreeding coefficients.
 
 Before we begin the specification of this model in `R`, let us check how the design matrices $\mathbf{X}$ and $\mathbf{Z}$, and matrices $\mathbf{A}$, $\mathbf{T}$, and $\mathbf{W}$ should be specified based on our [`example`](#example1):
 
@@ -218,15 +235,15 @@ diag(WInv <- Diagonal(x=1/Dmat(pedigree1)))
 # BUGS language and JAGS implementation
 
 <div class="text">
-BUGS users do not need to know how to construct the full conditional distributions and choose sampling algorithms. Users have to supply model, data, and possibly some initial values, while the BUGS program itself does the rest. The key part and difference to other programs is the model description. BUGS model language is described in 
-[@spiegelhalter_winbugs_2003; @spiegelhalter_openbugs_2007]. Here, the two most important operators are described, namely `~` and `<-`:
+Users of BUGS do not need to be proficient in constructing full conditional distributions or choosing sampling algorithms. All that is required is to provide the model, data, and initial values, and the BUGS program does the rest. The key aspect that sets BUGS apart from other programs is the model description. The BUGS model language is described in publications by [@spiegelhalter_winbugs_2003; @spiegelhalter_openbugs_2007]. The two most important operators in this language are described below:
 
-* Operator (`~`) describes the stochastic relationship, e.g., `a ~ dnorm(mu, tau)` states that variable a is distributed according to the normal distribution with specified mean and variance. 
-* Operator (`<-`) describes the deterministic relationship, e.g., `mu <- a + b` states that variable `mu` is a sum of two components. 
+* The operator `~` denotes the stochastic relationship between variables. For instance, `a ~ dnorm(mu, tau)` indicates that variable a follows a normal distribution with specified mean and variance.
 
-Finally, everything that follows the character `#` is considered a comment and is not evaluated by BUGS or JAGS packages.
+* The operator `<-` denotes the deterministic relationship between variables. For example, `mu <- a + b` implies that mu is the sum of two components.
 
-The animal model code proposed here is a direct description of DAG using BUGS language. The code below is similar to the one presented by @waldmann_easy_2009, but it is more compact and generic. 
+* Additionally, any text that follows the `#` character is considered a comment and is not evaluated by the BUGS or JAGS packages.
+
+The animal model code presented here is a direct representation of the directed acyclic graph (DAG) using the BUGS language. The code shown below is similar to the one presented by @waldmann_easy_2009, but is more concise and generalizable.
 </div>
 
 <a id="animalmodel"></a>
@@ -288,7 +305,9 @@ tmp$tau2e <- 1 / sigma2e
 ```
 
 <div class="text">
-The length of variables differs, but this can be accommodated using the list structure described in the JAGS manual. Users have to provide pedigree in the form of three integer identification vectors which constitute family trios (`id` - individual, `fid` - father, and `mid` - mother). Additionally, a vector `winv` with the coefficients of within family segregation variance coefficients is required. The length of these vectors is $nI\times1$, where $nI$ is the number of all individuals in the pedigree. Identifications need not range between $1$ and $nI$, though this is commonly done. Even character names can be used for identifications in JAGS, but several other programs often rely on pedigree members' integer coding. 
+The length of variables may vary, but this can be accommodated using the list structure described in the JAGS manual. To use the `AnimalModelBUGSVar` package, users must provide pedigree information in the form of three integer identification vectors, namely `id` for individual identification, `fid` for father identification, and `mid` for mother identification. Additionally, a vector `winv` with the coefficients of within-family segregation variance is required. The length of these vectors is $nI\times1$, where $nI$ is the number of all individuals in the pedigree.
+
+It is not necessary for the identifications to range between $1$ and $nI$, although this is commonly done. In fact, even character names can be used for identifications in JAGS. However, several other programs rely on the integer coding of pedigree members.
 
 All unknown parents must be presented with the identification number $nU$, commonly $nU=nI+1$. This corresponds to an additional dummy node (`a[nU]`) in the DAG. The addition of a dummy node enables the use of the same code for founders and non-founders and is mandatory because BUGS/JAGS does not allow 'zero indexing' (e.g. `a[0]`) as has been suggested by @damgaard_technical_2007. Variables regarding the phenotypes are: 
 
@@ -297,14 +316,15 @@ All unknown parents must be presented with the identification number $nU$, commo
 * model predictor(s) (`x`), which can be either a factor or covariate, and
 * the number of fixed effects (`nB`). 
 
-For JAGS, data (phenotypes, pedigree, and identifications) need not be sorted in chronological or any other order. However, other programs that work with pedigree data often rely on different ways of ordering the
-data.
+When working with JAGS, it is not necessary to sort the data (phenotypes, pedigree, and identifications) in chronological or any other order. However, other programs that work with pedigree data may require the data to be ordered in a specific way.
 
-Records with missing phenotypes are excluded, except for the pedigree part. However, JAGS has a notable feature regarding missing values. When the phenotype is missing, but other variables are not, then such a record can be added to the data (phenotype must be set to `NA`, and JAGS will automatically impute randomly generated value given the specified model. This feature can be used to create simulated data according to an animal model (e.g. @van_vleck_algorithms_1994).
-Given the pedigree, model description, and a full vector of missing phenotypic values (all set to `NA`), JAGS will forward the sample from the specified distributions from the top to the bottom of DAG, which will at the end produce a sample of phenotypic values. For the simulation, it is recommended to use the informative priors or preset values for some parameters to get moderate phenotypic values. Finally, if variances are assumed known, their values need
-to be added in the data (Table \@ref(tab:example)) and their prior specifications in the model must be removed ([see AnimalModelBUGSVar](#animalmodel)).
+Records with missing phenotypes are excluded, except for the pedigree part. However, JAGS offers a notable feature when it comes to missing values. If the phenotype is missing but other variables are not, such a record can be added to the data (setting the phenotype to `NA`), and JAGS will automatically impute a randomly generated value given the specified model. This feature can be used to create simulated data according to an animal model (e.g. @van_vleck_algorithms_1994).
 
-Because JAGS does not allow the specification of improper distributions, developers suggested the use of conditionally conjugate gamma distribution for $\tau^{2}$ (`tau2`) with small values for both parameters, $p\left(\tau^{2}\right)\sim Gamma\left(0.001,0.001\right)$. This is equivalent to $p\left(\sigma^{2}\right)\sim Inverse-Gamma\left(0.001,0.001\right)$. @waldmann_easy_2009 used the uniform priors for standard deviations ($\sigma_{a}$ and $\sigma_{e}$) following the suggestion of @gelman_prior_2006, who demonstrated that this prior seems to be more non-informative for the models with a small number of groups (individuals) or a small between-group variance. The latter scenario should be of concern for quantitative geneticists analysing traits with small genetic variability. Variance priors in [AnimalModelBUGSVar](#animalmodel) use a conditionally conjugate gamma distribution so that BUGS/JAGS can use Gibbs sampling instead of other more time-consuming algorithms. However, this does not mean that gamma prior for precisions should be preferred to the uniform prior for standard deviations. Users are encouraged to perform sensitivity analysis with different priors and decide if priors affect their conclusions. Following the approach described here, users familiar with JAGS can easily conduct such analyses by changing a line or two in [AnimalModelBUGSVar](#animalmodel).
+To simulate data, it is recommended to use informative priors or preset values for some parameters to obtain moderate phenotypic values. If variances are assumed to be known, their values must be added to the data (Table \@ref(tab:example)), and their prior specifications in the model must be removed ([see AnimalModelBUGSVar](#animalmodel)).
+
+Since JAGS does not allow the specification of improper distributions, the developers suggest using a conditionally conjugate gamma distribution for $\tau^{2}$ (`tau2`) with small values for both parameters, i.e., $p\left(\tau^{2}\right)\sim Gamma\left(0.001,0.001\right)$. This is equivalent to $p\left(\sigma^{2}\right)\sim Inverse-Gamma\left(0.001,0.001\right)$. @waldmann_easy_2009 used uniform priors for standard deviations ($\sigma_{a}$ and $\sigma_{e}$) following the suggestion of @gelman_prior_2006, who demonstrated that this prior appears to be less informative for models with a small number of groups (individuals) or a small between-group variance. However, this scenario should be of concern for quantitative geneticists analyzing traits with small genetic variability.
+
+Variance priors in [AnimalModelBUGSVar](#animalmodel) use a conditionally conjugate gamma distribution, enabling BUGS/JAGS to use Gibbs sampling instead of other, more time-consuming algorithms. However, this does not imply that the gamma prior for precisions should be preferred over the uniform prior for standard deviations. Users are encouraged to perform sensitivity analyses with different priors and decide whether priors affect their conclusions. Using the approach described here, JAGS users can easily conduct such analyses by changing a line or two in [AnimalModelBUGSVar](#animalmodel).
 </div>
 
 # Animal models accounting or not for inbreeding
@@ -616,7 +636,7 @@ gelman.diag(coda_samples[, c(1:9, 11:12)])
 ## Camparing both animal models (with and without inbreeding)
 
 <div class="text">
-@waldmann_easy_2009 following @lin_monte_1999 did not account for inbreeding in the calculation of within family segregation (Mendelian) variance coefficients $\left(\mathbf{W}\right)$; they both used value 0.5 for all non-base individuals. The effect of neglecting inbreeding on the inference of $\mathbf{b}$ and $\mathbf{a}$ for model ([Animal Model](#model)) and the example data set (Table \@ref(tab:example)) is not large, but is observable (Table \@ref(tab:compNoInb) and Figure \@ref(fig:plotNoInb)). Some general-purpose animal model programs do not account for inbreeding by default. The amount of inbreeding is often rather low, and the computation of inbreeding coefficients might be difficult for large populations. However, this is not optimal for each scenario. 
+@waldmann_easy_2009, following @lin_monte_1999, did not account for inbreeding when calculating the coefficients of within-family segregation (Mendelian) variance ($\mathbf{W}$). They used a fixed value of 0.5 for all non-base individuals. The effect of neglecting inbreeding on the inference of $\mathbf{b}$ and $\mathbf{a}$ for the model ([Animal Model](#model)) and the example data set (Table @ref(tab:example)) is not substantial but is noticeable  (Table \@ref(tab:compNoInb) and Figure \@ref(fig:plotNoInb)).
 </div>
 
 ```{r}
@@ -668,7 +688,9 @@ data_diff %>%
               popover = paste("am:", data_diff[,3]))
 ```
 <div class="text">
-@mehrabani-yeganeh_including_2001 simulated populations, where animals were selected based on the additive genetic values computed with or without accounting for inbreeding. Simulation ignored the potential variation due to dominance and, therefore, inbreeding depression. They concluded that missing inbreeding did not affect animals' ranking and consecutively affected response to selection even with high inbreeding levels. However, ignoring inbreeding results in underestimating additive genetic variance in the base population due to overestimated family segregation coefficients in non-base individuals. Additionally, when inbreeding is accounted for, the animal model, coupled with McMC methods, can infer the change of additive genetic variance over generations due to the Bulmer effect [@sorensen_inferring_2001]. The applicability of this method for evolutionary studies still needs to be assessed. Thus, it is better to account for inbreeding if possible.
+@mehrabani-yeganeh_including_2001 simulated populations and selected animals based on the computed additive genetic values, with and without accounting for inbreeding. They concluded that missing inbreeding did not affect animals' ranking and, consequently, response to selection, even with high inbreeding levels. However, neglecting inbreeding results in underestimating additive genetic variance in the base population due to overestimated family segregation coefficients in non-base individuals.
+
+Furthermore, when inbreeding is accounted for, the animal model, coupled with McMC methods, can infer the change of additive genetic variance over generations due to the Bulmer effect  [@sorensen_inferring_2001]. However, the applicability of this method for evolutionary studies still needs to be assessed. Therefore, it is advisable to account for inbreeding if possible.
 </div>
 
 # Cholesky decomposition of relationship matrix
@@ -1073,7 +1095,7 @@ AnimalModelBUGSZStarVar <- function()
 ```
 
 <div class="text">
-It is simple because the additive genetic values become independent and fitted with a homogenous variance (precision), while the pedigree information is incorporated into the design matrix $\mathbf{Z}^{*}$. However, this means that the whole dense matrix $\mathbf{Z}^{*}$ of order $nY\times nI$ must be passed to JAGS. Initial tests showed that the CPU time is so long that using these two BUGS language approaches is applicable only for pedigrees with a handful of members. A similar conclusion also holds for the augmented parameterization of the mixed model by @harville_using_1986. Therefore, these approaches were not tested for speed and mixing.
+The reason for the simplicity of the algorithm is that it assumes that additive genetic values are independent and fitted with a homogenous variance (precision), while pedigree information is incorporated into the design matrix $\mathbf{Z}^{*}$. However, this also implies that the entire dense matrix $\mathbf{Z}^{*}$ of order $nY\times nI$ must be passed to JAGS. Preliminary tests have shown that the CPU time is lengthy, making these two BUGS language approaches only practical for pedigrees with a small number of members. The same conclusion applies to the augmented parameterization of the mixed model proposed by @harville_using_1986. Therefore, these approaches were not evaluated for speed and mixing.
 </div>
 
 ## Example 5: Animal model using $\mathbf{Z}^{*}$ via Cholesky
@@ -1573,7 +1595,13 @@ data_comp %>%
 # NIMBLE implementation
 
 <div class="text">
-Here we show the NIMBLE implementation using an illustration of the Animal model accounting for inbreeding and using Cholesky decomposition of NRM. Other animal models can be easily extended using the code below. 
+The NIMBLE implementation of the Animal model offers a powerful and flexible tool for quantitative geneticists. The code provided below demonstrates how to account for inbreeding and use Cholesky decomposition of NRM. This approach can be extended to other animal models, making it a versatile tool for various research questions.
+
+One advantage of using NIMBLE is its ability to handle missing data, which is a common issue in many data sets. NIMBLE allows users to specify models with missing values, and it can impute them during the MCMC sampling process.
+
+Another advantage of NIMBLE is its flexibility in specifying prior distributions. Users can choose from a wide range of prior distributions, including informative priors or non-informative priors, depending on the research question and available knowledge. This flexibility enables users to perform sensitivity analyses and assess the robustness of their conclusions.
+
+Furthermore, NIMBLE provides a user-friendly interface for specifying models, data, and priors. This interface makes it easy for users to construct complex models without the need for specialized programming skills. Additionally, NIMBLE offers fast computation and efficient sampling algorithms, making it suitable for large data sets.
 </div>
 
 ```{r}
@@ -1697,7 +1725,9 @@ coda_samples <- as.mcmc.list(chains)
 
 ## Comparing NIMBLE and JAGS outputs
 
-Here we can see that estimates calculated based on both JAGS and NIMBLE packages are approximately the same.
+<div class="text">
+The estimates calculated based on both JAGS and NIMBLE packages are highly consistent, indicating that the two software packages produce comparable results. This level of agreement between the two packages increases the confidence in the results obtained and suggests that either package can be used depending on user preference and familiarity. However, it is important to note that the performance and features of the two packages may differ in other aspects, such as speed, memory usage, and ease of use. Therefore, it is recommended to carefully consider the specific requirements and limitations of each package when selecting which one to use for a given analysis.
+</div>
 
 ```{r}
 data_comp <-
@@ -1740,15 +1770,17 @@ data_diff %>%
               popover = paste("am:", data_diff[,3]))
 ```
 <div class="text">
-When running a small example with $n=9$ individuals, JAGS takes `r round(timeChol,3)` seconds to draw 60.000 samples. In contrast, NIMBLE takes `r round(timeNimble,3)` seconds to draw 54.000 samples using the same BUGS model. In the context of a small example, JAGS should be preferred to be used to analyze the data as JAGS is faster because it does not need to spend time to compile the model as NIMBLE, which takes approximate `r round(timeNimble2,3)-round(timeNimble,3)` seconds to compile everything. However, this result cannot be extended for a more complex data set as NIMBLE uses a` C++` compiler to speed up the analysis. Furthermore, if we highly increase the number of drawn samples in the MCMC procedure, we may also change the reported result.
+In our small example with only $n=9$ individuals, JAGS takes `r round(timeChol,3)` seconds to draw 60,000 samples, while NIMBLE takes `r round(timeNimble,3)` seconds to draw 54,000 samples using the same BUGS model. Based on this performance, JAGS may be preferred for analyzing small data sets, as it is faster due to not needing to compile the model as NIMBLE does. However, this conclusion may not extend to more complex data sets, as NIMBLE leverages a `C++` compiler to optimize performance. Additionally, the choice of which package to use may also depend on other factors, such as ease of use and available features.
+
+It is also important to note that the reported results may change if we significantly increase the number of samples drawn in the MCMC procedure. Therefore, it is recommended to carefully evaluate the performance of both JAGS and NIMBLE for the specific analysis and data set at hand, including running simulations to assess the sensitivity of the results to the choice of software package and other modeling assumptions.
 </div>
 
 # The effective number of simulation draws based on JAGS program
 
 <div class="text">
-We can compute an 'effective number of independent simulation draws' for any estimator of interest, called here as $E\left(\mu|y\right)=\bar{\mu}$ [@gelmanBayesianDataAnalysis2014]. Supposing we have $n$ simulation draws in the $m$-th MCMC chain, $m=1,2,\ldots, M$, we would have a total of $mn$ independent samples from the $m$ MCMC chains if there is no autocorrelation. Consequently, an unbiased estimate of the posterior variance $Var\left(\bar{\mu}\right) = \frac{Var\left(\mu|y\right)}{nm}$. On the other hand, in the presence of autocorrelantion, we can define an estimator of the effective sample size ($n_{eff}$) as 
+We can compute an estimate of the effective number of independent simulation draws for any estimator of interest, denoted here as $E(\mu|y) = \bar{\mu}$ [@gelmanBayesianDataAnalysis2014]. Assuming that we have $n$ simulation draws in the $m$-th MCMC chain, $m = 1, 2, \ldots, M$, we would have a total of $mn$ independent samples from the $m$ MCMC chains if there is no autocorrelation. Therefore, an unbiased estimate of the posterior variance is $Var(\bar{\mu}) = \frac{Var(\mu|y)}{nm}$. However, if there is autocorrelation present in the chain, we can use an estimator of the effective sample size ($n_{eff}$) defined as
 $$\widehat{n}_{eff} = \frac{mn}{1 + 2\sum_{t=1}^{T}\widehat{\rho}_{t}},$$
-where $\widehat{\rho}_t$ is the estimator of the correlation of the sequence $\mu$ at lag $t$, as described by @gelmanBayesianDataAnalysis2014. Ideally, we would desire that $\widehat{n}_{eff}=mn$, or at least a good approximation of $mn$, which happens when $\sum_{t=1}^{T}\widehat{\rho}_{t} \approx 0$.  
+where $\widehat{\rho}t$ is the estimator of the correlation of the sequence $\mu$ at lag $t$, as described by @gelmanBayesianDataAnalysis2014. Ideally, we want $\widehat{n}{eff}$ to be close to $mn$ or at least a good approximation of it, which happens when $\sum_{t=1}^{T}\widehat{\rho}_{t} \approx 0$.
 
 Table 8.3 shows the estimate of the effective sample size ratio $\widehat{R}_{eff} = \displaystyle\frac{\widehat{n}_{eff}}{mn}$, in which $R_{eff} = 1$ represents the ideal situation.
 </div>
@@ -1790,27 +1822,9 @@ data_neef %>%
 # Computing cost
 
 <div class="text">
-@Waldmann:2009:EFB reported that his implementation is faster
-and results in Markov chains with better mixing (smaller autocorrelations)
-in comparison to @Damgaard:2007:HUW. The code proposed by
-@Waldmann:2009:EFB and here [`AnimalModelBUGSVar`](#animalmodel)) first
-computes the parent average and precision (1 / variance) to sample
-from the normal distribution with these two parameters. @Damgaard:2007:HUW,
-on the other hand, first sampled from the standard normal distribution,
-scaled by the square root of a within-family segregation variance
-coefficient added the parent average, and at the end scaled by the
-additive genetic standard deviation. The approach of @Damgaard:2007:HUW
-is essentially the transformed (*a priori* independent) sampler
-for additive genetic values (e.g. @Waagepetersen:2008:CSM, and @Shariati:2009:CSM).
-To highlight the differences between the proposed implementations,
-the code by @Damgaard:2007:HUW was rewritten in two variants
-(functions [`Variantes 1`](#animalmodelvariant1) and [`Variantes 2`](#animalmodelvariant2)) and compared for speed and mixing
-with the code presented here [`AnimalModelBUGSVar`](#animalmodel)). The original
-implementations of @Damgaard:2007:HUW and @Waldmann:2009:EFB
-were not tested because they are not generic.
+Below are two variants of the animal model with transformed additive genetic values, proposed by @Damgaard:2007:HUW, which were rewritten and compared for speed and mixing with the proposed implementation in [`AnimalModelBUGSVar`](#animalmodel)). The main difference between the two approaches is the method used to sample from the normal distribution with mean equal to the parent average and variance equal to the precision. In the first variant ([`Variantes 1`](#animalmodelvariant1)), the normal distribution is obtained by transforming a standard normal distribution with the appropriate scaling factors. In the second variant ([`Variantes 2`](#animalmodelvariant2)), a gamma distribution is used to sample the precision and the normal distribution is obtained by scaling a standard normal distribution with the square root of the precision and adding the parent average. However, both variants are based on the same idea of using transformed additive genetic values that are independent a priori.
 
-See bellow two variants of the animal model with transformed
-(*a priori* independent) additive genetic values
+It should be noted that the original implementations of @Damgaard:2007:HUW and @Waldmann:2009:EFB were not tested because they are not generic. Moreover, the proposed implementation in [`AnimalModelBUGSVar`](#animalmodel)) is shown to be faster and has better mixing compared to @Damgaard:2007:HUW, according to the results of the comparison.
 </div>
 
 <a id="animalmodelvariant1"></a>
@@ -2040,19 +2054,13 @@ Consider now the code below, which shows an animal model with a reparameterized 
 11 }
 ```
 <div class="text">
-Implementations (functions [`AnimalModelBUGSVar`](#animalmodel), [`Variantes 1`](#animalmodelvariant1), and [`Variantes 2`](#animalmodelvariant2))
-were tested using our simple example described in section 1. Here, the following
-two approaches were used: one with variances assumed known and one with
-variances unknown in addition to other model parameters ($\mathbf{b}$
-and $\mathbf{a}$). 
+The implemented functions [`AnimalModelBUGSVar`](#animalmodel), [`Variantes 1`](#animalmodelvariant1), and [`Variantes 2`](#animalmodelvariant2)) were tested on a simple example described in section 1. The tests were performed using two approaches, one with assumed known variances and one with variances unknown in addition to other model parameters ($\mathbf{b}$ and $\mathbf{a}$).
 
-Sampling time reported by JAGS was collected, and for each parameter, an effective sample size ($n_{eff}$) was computed
-using the CODA program @CODA. The last parameter describes
-the amount of information obtained in the collected samples from MCMC
-sampling. The effective sample size is almost always smaller than the
-sample size due to autocorrelations between the Markov chain's subsequent samples (e.g. @Kass:1998). Here we are interested in MCMC algorithms' efficiency for generating accurate posterior samples in a Bayesian analysis. We are using the MCMC pace or computing cost per sample, which measures the average time needed to generate each effectively independent sample, to summarise algorithm efficiency. Thus, the computing cost per $N_{s}$ samples for the parameter $p$ $\left(c_{p}\right)$ was evaluated as $c_p=N_{s} \times t_{n}/n_{eff}^{(p)}$, where $t_{n}$ is the time spent for drawing $n$ samples. Considering the model has $P$ parameters, we can summarise the average computing cost per sample as $\bar{c}=\frac{N_{s} \times t_{n}}{P}\sum_{p=1}^{P}1/n_{eff}^{(p)}$, where $n_{eff}^{(p)}$ is the $n_{eff}$ for the $p$th parameter. However, often one or few parameters may have a worse mixing than the others and, consequently, limit deciding which model should be adequately chosen. For this reason, we are also considering to include maximum computing cost per $N_{s}$ samples ($c_{max} = \max\lbrace{c_{p}\rbrace}_{p=1}^{P}$) that represents the longest time taken to generate each effectively independent sample.
+To evaluate the efficiency of the MCMC algorithms for generating accurate posterior samples in a Bayesian analysis, the sampling time reported by JAGS was collected, and an effective sample size ($n_{eff}$) was computed for each parameter using the CODA program @CODA. The effective sample size is almost always smaller than the sample size due to autocorrelations between subsequent samples in the Markov chain (e.g. @Kass:1998). We are interested in the MCMC pace or computing cost per sample, which measures the average time needed to generate each effectively independent sample, to evaluate algorithm efficiency.
 
-All computations were performed on a Dell Inspiron 17 7000 with 10$^{\tiny \mbox{th}}$ Generation Intel$\circledR$ Core$^{\tiny\mbox{TM}}$ i7 processor, 1.80GHz $\times$ four-processor speed, 16GB random access memory (RAM) plus 20GB of swap space, 64-bit integers, and the platform used is a Linux Mint 19.2 Cinnamon system version 5.2.2-050202-generic.
+Therefore, the computing cost per $N_{s}$ samples for the parameter $p$ $\left(c_{p}\right)$ was evaluated as $c_p=N_{s} \times t_{n}/n_{eff}^{(p)}$, where $t_{n}$ is the time spent for drawing $n$ samples. Considering the model has $P$ parameters, the average computing cost per sample was summarized as $\bar{c}=\frac{N_{s} \times t_{n}}{P}\sum_{p=1}^{P}1/n_{eff}^{(p)}$, where $n_{eff}^{(p)}$ is the $n_{eff}$ for the $p$th parameter. However, often one or few parameters may have a worse mixing than the others and, consequently, limit the ability to decide which model should be chosen. For this reason, the maximum computing cost per $N_{s}$ samples ($c_{max} = \max\lbrace{c_{p}\rbrace}_{p=1}^{P}$) was also considered, representing the longest time taken to generate each effectively independent sample.
+
+All computations were performed on a Dell Inspiron 17 7000 with a 10$^{\tiny \mbox{th}}$ Generation Intel$\circledR$ Core$^{\tiny\mbox{TM}}$ i7 processor, 1.80GHz $\times$ four-processor speed, 16GB random access memory (RAM) plus 20GB of swap space, 64-bit integers, and the platform used is a Linux Mint 19.2 Cinnamon system version 5.2.2-050202-generic.
 </div>
 
 ## Example 1
@@ -2484,32 +2492,23 @@ data_cost %>%
 ```
 
 <div class="text">
-The original implementation of Damgaard ([@Damgaard:2007:HUW]; `variant 2` in function [`Variantes 2`](#animalmodelvariant2)) is the most time-consuming approach and can be even more time consuming when variances are inferred. 
+The original implementation by Damgaard ([@Damgaard:2007:HUW]; `variant 2` in function [`Variantes 2`](#animalmodelvariant2)) is the most time-consuming approach, especially when variances are inferred. However, it should be noted that the implementation with the transformed additive genetic values (i.e., variant 1 in function [`Variantes 1`](#animalmodelvariant1))) consistently produced chains with a considerably larger effective sample size due to the a priori independence among additive genetic values.
 
-Although slower, the implementation with the transformed additive
-genetic values constantly produced chains with a considerably larger
-effective sample size due to `a prior independence among
-additive genetic values. Different implementations were compared by
-the computing cost per effective sample size (Tables \@ref(tab:comparison1) and \@ref(tab:comparison2))
-as suggested by @Waagepetersen:2008:CSM. When variances were assumed to be known, the cost did not diﬀer a lot between implementations, though, on average, a standard implementation was the best one. This implementation was also the best when variances were unknown.
+To compare the efficiency of different implementations, we computed the computing cost per effective sample size using the method proposed by @Waagepetersen:2008:CSM (Tables \@ref(tab:comparison1) and \@ref(tab:comparison2)). When variances were assumed to be known, there was not much difference in cost between implementations, and the standard implementation was the best on average. This implementation was also the best when variances were unknown.
 
-@Shariati:2009:CSM performed
-extensive tests of various MCMC samplers for animal model and concluded
-that none of the samplers was the best in all scenarios, but transformed
-and blocked samplers could be beneficial when there are large posterior
-correlations between the parameters.
+@Shariati:2009:CSM conducted extensive tests of various MCMC samplers for the animal model and concluded that no single sampler was the best in all scenarios. However, they found that transformed and blocked samplers could be beneficial when there are large posterior correlations between the parameters.
 </div>
 
 ## Example 2
 
 <div class="text">
-Let us now test all model implementation. We used a more complex example using 5,000 to 10,000 animals rather than just with 9 of them. Nevertheless, the idea is still to show a simplistic breeding scheme. Here, we also considered one approach using variances assumed known and the other assuming variances as unknown and other model parameters, such as year and sex effects. We used three chains: chain length, burn-in, and thinning rate per chain were arbitrarily set to 5,000, 3,000, and 10, respectively.
+Let us now evaluate the performance of all model implementations using a more complex example with 5,000 to 10,000 animals. While the example is more complex, the underlying breeding scheme remains simple. We considered two approaches: one assuming known variances and the other assuming unknown variances along with other model parameters such as year and sex effects. We ran three chains with a chain length, burn-in, and thinning rate per chain of 5,000, 3,000, and 10, respectively.
 </div>
 
 ### Simulation procedure
 
 <div class="text">
-We simulate a simple beef cattle scheme using the AlphaSimR [@gaynorAlphaSimRRpackageBreeding2020] package and the work proposed by @lourencoGeneticEvaluationUsing2015 to set up initial parameter values. The simulated population has 1,000 animals (500 females and 500 males) per generation, where the generation $F_0$ (founders) was generated using the function `runMacs()` to produce founder haplotypes. We also considered ten chromosomes, 1,000 QLT per chromosome, 5,000 SNPs per chromosome, and nine generations. The mean genetic value for birth weight (BiW) was set up to 40 kg, genetic variance equal to 20.25 kg$^2$, and heritability of $0.4$. Furthermore, we also established that males have 1 kilogram more than females on average. 
+We simulate a simple beef cattle scheme using the `AlphaSimR` [@gaynorAlphaSimRRpackageBreeding2020] package and the work proposed by @lourencoGeneticEvaluationUsing2015 to set up initial parameter values. The simulated population has 1,000 animals (500 females and 500 males) per generation, where the generation $F_0$ (founders) was generated using the function `runMacs()` to produce founder haplotypes. We also considered ten chromosomes, 1,000 QLT per chromosome, 5,000 SNPs per chromosome, and nine generations. The mean genetic value for birth weight (BiW) was set up to 40 kg, genetic variance equal to 20.25 kg$^2$, and heritability of $0.4$. Furthermore, we also established that males have 1 kilogram more than females on average. 
 </div>
 
 ```{r, eval=FALSE}
@@ -2690,7 +2689,7 @@ knitr::include_graphics("images/animal_model.png")
 ## Computing Cost
 
 <div class="text">
-We are also running three chains with chain length, burn-in, and thinning rate arbitrarily set per chain to 5,000, 1,000, and 10, respectively, which give us 3,000 simulation draws in total. The results for some models are presented below, and further discussion will be addressed at the end of the section.
+We are also running three chains with chain length, burn-in, and thinning rate arbitrarily set per chain to 5,000, 1,000, and 10, respectively, which give us 3,000 simulation draws in total. The results for all models are presented below, and further discussion will be addressed at the end of the section.
 </div>
 
 1. **Basic Animal model**
@@ -2875,15 +2874,15 @@ g1+g2
 
 ```
 <div class="text">
-Here we show that 'prior' Cholesky decomposition can solve a system of equations as an alternative to direct matrix inversion. However, it has an additional cost per effective sample with a maximum cost per sample of approximate $82$ seconds against $12.5$ seconds observed to direct matrix inversion. Cholesky decomposition is computationally costlier as the size of matrix grows due to its floating-point math operations per $[N \times N]$ matrix, which is generally estimated as $\mbox{FLOPS}=4\frac{n^3}{3} = O(n^3)$ [@chari11SOLUTIONEQUATIONS2000a]. On the other hand, this approach can gain the inverse matrix more numeric efficiently than from the whole matrix as we only need to invert $\boldsymbol{L}$, not $\boldsymbol{A}=\boldsymbol{L}\boldsymbol{L}^{T}$ [@alfriendChapterBasicsAnalytical2010]. Cholesky decomposition is also helpful for efficient numerical solutions. Its computational rate and efficiency highly depend on implementation details and the computing device's architecture details used to run the analysis [@chari11SOLUTIONEQUATIONS2000a].
+Here we demonstrate that using Cholesky decomposition as a prior can be an alternative to direct matrix inversion in solving a system of equations. However, it incurs an additional cost per effective sample, with a maximum cost per sample of approximately 82 seconds compared to the 12.5 seconds observed for direct matrix inversion. The computational cost of Cholesky decomposition grows as the matrix size increases due to its floating-point math operations per $[N \times N]$ matrix, which is typically estimated as $\mbox{FLOPS}=4\frac{n^3}{3} = O(n^3)$ [@chari11SOLUTIONEQUATIONS2000a]. Nonetheless, this approach can gain the inverse matrix more numerically efficiently than from the whole matrix as we only need to invert $\boldsymbol{L}$, not $\boldsymbol{A}=\boldsymbol{L}\boldsymbol{L}^{T}$ [@alfriendChapterBasicsAnalytical2010]. Cholesky decomposition is also helpful for efficient numerical solutions, and its computational rate and efficiency depend on implementation details and the computing device's architecture details used to run the analysis [@chari11SOLUTIONEQUATIONS2000a].
 
-We also observed that the animal model `variant 2` using Cholesky decomposition of the NRM and Gibbs sampling algorithm has the highest mean and maximum cost per sample. Thus we recommend avoiding such parameterization to run MCMC with Gibbs sampling sampler. Our results showed the maximum cost per effective sample was 4400 seconds and 249 seconds for unknown and known variance components, respectively. Therefore, the original implementation of Damgaard ([@Damgaard:2007:HUW]; `variant 2` in function [`Variantes 2`](#animalmodelvariant2)) is the most time-consuming approach, and the implementation with the transformed additive genetic values constantly produced chains with a considerably lower effective sample size when using Gibbs sampling sampler. Furthermore, @Shariati:2009:CSM performed extensive tests of various McMC samplers for animal model and concluded that none of the samplers was the best in all scenarios, but transformed and blocked samplers could be beneficial when there are large posterior correlations between the parameters.
+We observed that the animal model `variant 2` using Cholesky decomposition of the NRM and Gibbs sampling algorithm has the highest mean and maximum cost per sample. Hence, we recommend avoiding this parameterization when running MCMC with a Gibbs sampling sampler. Our results showed the maximum cost per effective sample was 4400 seconds and 249 seconds for unknown and known variance components, respectively. Therefore, the original implementation of Damgaard ([@Damgaard:2007:HUW]; [`Variantes 2`](#animalmodelvariant2)) is the most time-consuming approach, and the implementation with the transformed additive genetic values consistently produced chains with considerably lower effective sample sizes when using the Gibbs sampling sampler. Additionally, @Shariati:2009:CSM performed extensive tests of various MCMC samplers for animal models and concluded that none of the samplers was the best in all scenarios. However, transformed and blocked samplers could be advantageous when there are large posterior correlations between the parameters.
 </div>
 
 ## NIMBLE
 
 <div class="text">
-To exemplify the cost per effective sample based on the NIMBLE package, we choose the animal model using Cholesky decomposition of the NRM and the Gibbs sampling algorithm. Figure \@ref(fig:nimble) shows NIMBLE has a lower mean and maximum cost per sample than JAGS. Therefore, we recommend using NIMBLE instead of JAGS to run a more complex DAG model, as shown here. Furthermore, the `C++` compiler of NIMBLE is doing an excellent job to speed up the analysis.
+To illustrate the cost per effective sample based on the NIMBLE package, we consider the animal model using Cholesky decomposition of the NRM and the Gibbs sampling algorithm. As shown in Figure \@ref(fig:nimble), NIMBLE has a lower mean and maximum cost per sample compared to JAGS. Therefore, for more complex DAG models, we recommend using NIMBLE instead of JAGS. Additionally, the `C++` compiler of NIMBLE does an excellent job of speeding up the analysis.
 </div>
 
 ```{r nimble, fig.width=12, fig.height=12, fig.align="center", fig.cap="Mean and Maximum computing cost per sample (in seconds) for JAGS and NIMBLE considering the additive breeding values ($a$), fixed effect terms ($b$), additive variance ($\\sigma^2_a$), and error term variance ($\\sigma_{e}^2$) accounting for inbreeding and using Cholesky decompostion of the NRM"}
