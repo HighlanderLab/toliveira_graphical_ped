@@ -4,27 +4,27 @@ This repository presents an evaluation of different MCMC samplers and parameteri
 
 # Installing and Specifying Package Versions for R Script
 
-This document provides instructions for installing and specifying the version of the packages used in the R script. The R script contains the following packages:
+This document provides instructions for installing and specifying the version of the packages used in the `R` script. The `R` script contains the following packages:
 
-* pacman
-* MasterBayes
-* tidyverse
-* knitr
-* runjags
-* MCMCvis
-* MCMCglmm
-* gdata
-* coda
-* ggrepel
-* dplyr
-* kableExtra
-* MatrixModels
-* pedigreemm
-* prettycode
-* formattable
-* AlphaSimR
-* patchwork
-* animalModels
+* `pacman`
+* `MasterBayes`
+* `tidyverse`
+* `knitr`
+* `runjags`
+* `MCMCvis`
+* `MCMCglmm`
+* `gdata`
+* `coda`
+* `ggrepel`
+* `dplyr`
+* `kableExtra`
+* `MatrixModels`
+* `pedigreemm`
+* `prettycode`
+* `formattable`
+* `AlphaSimR`
+* `patchwork`
+* `animalModels`
 
 To install the required packages and ensure their proper version, follow these steps:
 
@@ -36,7 +36,7 @@ if (!require("pacman")) {
 }
 ```
 
-2. Next, check if the "MasterBayes" package is installed. If not, install it with a specific version (2.58) using the following command:
+2. Next, check if the `MasterBayes` package is installed. If not, install it with a specific version (2.58) using the following command:
 
 ```
 if (!require("MasterBayes")) {
@@ -45,7 +45,7 @@ if (!require("MasterBayes")) {
 }
 ```
 
-3. Load the required packages using the "pacman" package with the following command:
+3. Load the required packages using the `pacman` package with the following command:
 
 ```
 pacman::p_load(
@@ -69,7 +69,7 @@ pacman::p_load(
 )
 ```
 
-4. Check if the "animalModels" package is installed. If not, install it from a local source file using the following command:
+4. Check if the `animalModels` package is installed. If not, install it from a local source file using the following command:
 
 ```
 if (!require("animalModels")) {
@@ -85,10 +85,9 @@ library(animalModels)
 prettycode::prettycode()
 ```
 
-The R script is compatible with the following R environment:
+The R script is compatible with the following `R` environment: `R` version: 4.1.3 (2022-03-10)
 
-R version: 4.1.3 (2022-03-10)
-Please ensure that your R environment matches the above specifications before running the script.
+Please ensure that your `R` environment matches the above specifications before running the script.
 
 
 In case you encounter issues using pacman for package installation or prefer to use the remotes package, follow this guide to install the specific versions of the packages using the remotes::install_version() function:
