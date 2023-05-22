@@ -28,7 +28,9 @@ This document provides instructions for installing and specifying the version of
 
 To install the required packages and ensure their proper version, follow these steps:
 
-1. First, check if the "pacman" package is installed. If not, install it using the following command:
+1. Download and install "Jags" from https://sourceforge.net/projects/mcmc-jags/
+
+2. First, check if the "pacman" package is installed. If not, install it using the following command:
 
 ```
 if (!require("pacman")) {
@@ -36,7 +38,7 @@ if (!require("pacman")) {
 }
 ```
 
-2. Next, check if the `MasterBayes` package is installed. If not, install it with a specific version (2.58) using the following command:
+3. Next, check if the `MasterBayes` package is installed. If not, install it with a specific version (2.58) using the following command:
 
 If you are executing the code on macOS, please follow these steps to address the possible missing dependencies: i) Ensure that you have the Xcode Command Line Tools installed on your system. You can install them by running the following command in the Terminal:
 
@@ -52,7 +54,7 @@ brew install gcc
 
 For Linux OS:
 
-If you are executing the code on a Linux system, please follow these steps to address any missing dependencies:
+If you are executing the code on a Linux system, please follow this step to address any missing dependencies:
 
 ```
 sudo apt-get install gfortran
@@ -85,7 +87,7 @@ if (!require("MasterBayes")) {
 }
 ```
 
-3. Load the required packages using the `pacman` package with the following command:
+4. Load the required packages using the `pacman` package with the following command:
 
 ```
 pacman::p_load(
@@ -109,7 +111,7 @@ pacman::p_load(
 )
 ```
 
-4. Check if the `animalModels` package is installed. If not, install it from a local source file using the following command:
+5. Check if the `animalModels` package is installed. If not, install it from a local source file using the following command:
 
 ```
 if (!require("animalModels")) {
@@ -118,7 +120,7 @@ if (!require("animalModels")) {
 }
 ```
 
-5. Load the `animalModels` package and use the "prettycode" function with the following command:
+6. Load the `animalModels` package and use the "prettycode" function with the following command:
 
 ```
 library(animalModels)
