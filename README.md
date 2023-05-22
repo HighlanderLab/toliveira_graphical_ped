@@ -38,9 +38,49 @@ if (!require("pacman")) {
 
 2. Next, check if the `MasterBayes` package is installed. If not, install it with a specific version (2.58) using the following command:
 
+If you are executing the code on macOS, please follow these steps to address the possible missing dependencies: i) Ensure that you have the Xcode Command Line Tools installed on your system. You can install them by running the following command in the Terminal:
+
+```
+xcode-select --install
+```
+
+Additionally, you may need to install the GNU Fortran compiler. This is required for certain R packages. You can download the GNU Fortran compiler from the official GNU Fortran website (https://gcc.gnu.org/wiki/GFortranBinaries) and follow the installation instructions specific to your macOS version. First you need to install `brew` (https://brew.sh/) and then use the command below in the terminal:
+
+```
+brew install gcc
+```
+
+For Linux OS:
+
+If you are executing the code on a Linux system, please follow these steps to address any missing dependencies:
+
+```
+sudo apt-get install gfortran
+```
+
+For Windows OS:
+
+Make sure you have Rtools installed on your system. Rtools provides the necessary tools and compilers for building R packages. You can download Rtools from the official website (https://cran.r-project.org/bin/windows/Rtools/).
+
+
+After following the appropriate steps based on your operating system, you can proceed to install `MasterBayes` by executing the following code:
+
 ```
 if (!require("MasterBayes")) {
-  install.packages("remotes")
+  # Install devtools package if not already installed
+  if (!requireNamespace("devtools", quietly = TRUE)) {
+    install.packages("devtools")
+  }
+  # Install remotes package from GitHub source
+  devtools::install_github("r-lib/remotes")
+  install.packages(c("quadprog", "mvtnorm", "gdata", "kinship2", "genetics"))
+  pacman::p_load(
+  quadprog, version = "1.5.8",
+  mvtnorm, version = "1.1.3",
+  gdata, version = "2.19.0",
+  kinship2, version = "1.9.6",
+  genetics, version = "1.3.8.1.3"
+  )
   remotes::install_version("MasterBayes", version = "2.58", repos = "http://cran.us.r-project.org")
 }
 ```
